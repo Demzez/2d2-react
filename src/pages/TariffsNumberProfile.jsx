@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Check, LockKeyhole, Smartphone, UserRound } from 'lucide-react';
-import { endpoints } from '../lib/api';
+import { endpoints } from '../lib/api.js';
 import { gb, money } from '../lib/format';
 import { Button, Card, Confirm, InlineError, PageHeading, State, useToast } from '../components/UI';
 
@@ -34,10 +34,11 @@ export function NumberPage() {
   const toast = useToast(); const client = useQueryClient();
   useEffect(() => { if (number?.nickname != null) setNickname(number.nickname); }, [number?.nickname]);
   const mutation = useMutation({ mutationFn: endpoints.updateNumber, onSuccess: async () => { await client.invalidateQueries({ queryKey: ['me'] }); toast('Настройки номера сохранены'); setConfirmBlocking(false); }, onError: (err) => toast(err.message, 'error') });
+  const anyBlocked = Boolean(number?.is_blocked || number?.admin_blocked);
   return <><PageHeading category="Тарифы и услуги" title="Управление номером"/><State isLoading={q.isLoading} error={q.error} onRetry={q.refetch}>
     <div className="settings-grid"><Card className="settings-card"><h2>Мой номер</h2><p className="field-help">Номер телефона: <strong>{number?.msisdn}</strong></p><p className="field-help">Лицевой счёт: <strong>{number?.account_number}</strong></p>
       <form onSubmit={(e) => { e.preventDefault(); mutation.mutate({ nickname: nickname.trim() }); }}><label className="form-label">Название номера<input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={80} required /></label><Button type="submit" loading={mutation.isPending}>Сохранить название</Button></form></Card>
-      <Card className="settings-card"><h2>Статус номера</h2><div className="number-status"><LockKeyhole size={24}/><span>{number?.is_blocked ? 'Номер заблокирован' : 'Номер активен'}</span></div><p>Блокировка запрещает подключать новые услуги и использовать трафик. Статус хранится в кабинете оператора.</p><Button variant={number?.is_blocked ? 'primary' : 'outline'} onClick={() => setConfirmBlocking(true)}>{number?.is_blocked ? 'Разблокировать номер' : 'Заблокировать номер'}</Button></Card></div>
+      <Card className="settings-card"><h2>Статус номера</h2><div className="number-status"><LockKeyhole size={24}/><span>{number?.admin_blocked ? 'Заблокирован администратором' : number?.is_blocked ? 'Номер заблокирован' : 'Номер активен'}</span></div><p>{number?.admin_blocked ? 'Номер заблокирован администратором оператора. Самостоятельная разблокировка недоступна.' : 'Блокировка запрещает подключать новые услуги и использовать трафик. Статус хранится в кабинете оператора.'}</p><Button variant={number?.is_blocked ? 'primary' : 'outline'} disabled={Boolean(number?.admin_blocked)} onClick={() => setConfirmBlocking(true)}>{number?.is_blocked ? 'Разблокировать номер' : 'Заблокировать номер'}</Button></Card></div>
   </State>{confirmBlocking && <Confirm title={number?.is_blocked ? 'Разблокировать номер?' : 'Заблокировать номер?'} description={number?.is_blocked ? 'Использование услуг будет снова разрешено.' : 'Подключение услуг и потребление трафика будут временно запрещены.'} confirmText={number?.is_blocked ? 'Разблокировать' : 'Заблокировать'} danger={!number?.is_blocked} loading={mutation.isPending} onCancel={() => setConfirmBlocking(false)} onConfirm={() => mutation.mutate({ is_blocked: !number.is_blocked })}/>}
   </>;
 }
@@ -53,6 +54,6 @@ export function Profile() {
     <State isLoading={q.isLoading} error={q.error} onRetry={q.refetch}><div className="settings-grid"><Card className="settings-card"><h2><UserRound size={25}/> Личные данные</h2>
       <form onSubmit={(e) => { e.preventDefault(); setError(null); mutation.mutate({ full_name: fullName.trim(), email: email.trim() }); }}>
         <label className="form-label">Логин<input value={user?.login || ''} disabled /></label><label className="form-label">ФИО<input value={fullName} required onChange={(e) => setFullName(e.target.value)}/></label><label className="form-label">Электронная почта<input type="email" value={email} onChange={(e) => setEmail(e.target.value)}/></label><InlineError error={error}/><Button type="submit" loading={mutation.isPending}>Сохранить изменения</Button>
-      </form></Card><Card className="settings-card"><h2><Smartphone size={25}/> Информация о номере</h2><p>Номер телефона</p><h3>{q.data?.number?.msisdn}</h3><p>Лицевой счёт</p><h3>{q.data?.number?.account_number}</h3><p>Название: {q.data?.number?.nickname || 'Мой номер'}</p><p>Статус: {q.data?.number?.is_blocked ? 'Заблокирован' : 'Активен'}</p><Link className="btn btn-outline" to="/number">Управление номером</Link></Card></div></State>
+      </form></Card><Card className="settings-card"><h2><Smartphone size={25}/> Информация о номере</h2><p>Номер телефона</p><h3>{q.data?.number?.msisdn}</h3><p>Лицевой счёт</p><h3>{q.data?.number?.account_number}</h3><p>Название: {q.data?.number?.nickname || 'Мой номер'}</p><p>Статус: {q.data?.number?.admin_blocked ? 'Заблокирован администратором' : q.data?.number?.is_blocked ? 'Заблокирован' : 'Активен'}</p><Link className="btn btn-outline" to="/number">Управление номером</Link></Card></div></State>
   </>;
 }

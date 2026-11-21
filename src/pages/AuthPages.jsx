@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ArrowRight, LockKeyhole, Phone, UserRound } from 'lucide-react';
-import { useAuth } from '../auth/AuthProvider';
-import { endpoints } from '../lib/api';
+import { useAuth } from '../auth/AuthProvider.jsx';
+import { endpoints } from '../lib/api.js';
 import { phoneValid } from '../lib/format';
 import { Button, InlineError, useToast } from '../components/UI';
 import desktop from '../assets/desktop.webp';
@@ -11,7 +11,7 @@ function AuthLayout({ children }) {
   return <div className="auth-page"><div className="auth-illustration" style={{ backgroundImage: `url(${desktop})` }} aria-hidden="true" /><div className="auth-form-zone">{children}</div></div>;
 }
 export function LoginPage() {
-  const { authenticated, login, verifyOtp } = useAuth();
+  const { authenticated, isAdmin, login, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [tab, setTab] = useState('password');
@@ -23,13 +23,14 @@ export function LoginPage() {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  if (authenticated) return <Navigate to="/" replace />;
+  if (authenticated) return <Navigate to={isAdmin ? '/admin' : '/'} replace />;
   const submit = async (e) => {
     e.preventDefault(); setError(null); setLoading(true);
     try {
-      if (tab === 'password') await login(loginValue.trim(), password);
-      else { if (!phoneValid(phone)) throw new Error('Укажите номер в формате +375XXXXXXXXX'); await verifyOtp(phone, code); }
-      navigate('/', { replace: true });
+      let res;
+      if (tab === 'password') res = await login(loginValue.trim(), password);
+      else { if (!phoneValid(phone)) throw new Error('Укажите номер в формате +375XXXXXXXXX'); res = await verifyOtp(phone, code); }
+      navigate(res?.role === 'admin' ? '/admin' : '/', { replace: true });
     } catch (err) { setError(err); }
     finally { setLoading(false); }
   };
@@ -51,14 +52,14 @@ export function LoginPage() {
     </form></section></AuthLayout>;
 }
 export function RegisterPage() {
-  const { authenticated, register } = useAuth();
+  const { authenticated, isAdmin, register } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [form, setForm] = useState({ login: '', password: '', full_name: '', email: '', phone: '+375', otp_code: '', privacy_accepted: false });
   const [requested, setRequested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  if (authenticated) return <Navigate to="/" replace />;
+  if (authenticated) return <Navigate to={isAdmin ? '/admin' : '/'} replace />;
   const change = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
   const requestCode = async () => {
     setError(null);

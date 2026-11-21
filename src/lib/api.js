@@ -83,7 +83,6 @@ export async function request(path, options = {}) {
       await refreshTokens();
       response = await send(path, options);
     } catch (err) {
-      // A temporary network outage must not erase valid refresh credentials.
       if (err.status === 400 || err.status === 401 || err.status === 403) clearSession();
       throw err;
     }
@@ -108,7 +107,7 @@ export const api = {
   delete: (path, options = {}) => request(path, { method: 'DELETE', ...options }),
 };
 
-// Central endpoint map makes auditing coverage against API_endpoints.md straightforward.
+// Central endpoint map covering all 40 client-facing methods from API_endpoints.md (v1.2).
 export const endpoints = {
   auth: {
     requestOtp: (phone, purpose) => api.post('/auth/otp/request', { phone, purpose }, { auth: false }),
@@ -139,5 +138,19 @@ export const endpoints = {
   deleteFavorite: (id) => api.delete(`/favorites/${id}`),
   notifications: (params) => api.get('/notifications', params),
   markRead: (id) => api.patch(`/notifications/${id}/read`),
+  admin: {
+    overview: () => api.get('/admin/overview'),
+    subscribers: (params) => api.get('/admin/subscribers', params),
+    subscriber: (id) => api.get(`/admin/subscribers/${id}`),
+    blockSubscriber: (id, admin_blocked) => api.patch(`/admin/subscribers/${id}/block`, { admin_blocked }),
+    tariffs: (params) => api.get('/admin/tariffs', params),
+    createTariff: (body) => api.post('/admin/tariffs', body),
+    updateTariff: (id, body) => api.patch(`/admin/tariffs/${id}`, body),
+    deleteTariff: (id) => api.delete(`/admin/tariffs/${id}`),
+    services: (params) => api.get('/admin/services', params),
+    createService: (body) => api.post('/admin/services', body),
+    updateService: (id, body) => api.patch(`/admin/services/${id}`, body),
+    deleteService: (id) => api.delete(`/admin/services/${id}`),
+  },
 };
 // POST /integrations/payment-webhook is intentionally NOT called from a browser.
